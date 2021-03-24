@@ -1,6 +1,8 @@
 package k8s
 
-import "strings"
+import (
+	"strings"
+)
 
 // GetFuncName parse <function_name>.<namespace>
 // if no namespace return defaultNamespace
