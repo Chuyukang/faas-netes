@@ -37,6 +37,9 @@ func GetService(functionNamespace string, functionName string, lister v1.Deploym
 
 // TODO
 func GetLoadBalancePolicy(functionNamespace string, functionName string, lister v1.DeploymentLister) string {
+	//for debugging
+	log.Printf("GetLoadBalancePolicy(%s, %s,...)", functionNamespace, functionName)
+
 	fallback := "RoundRobin"
 	functionStatus, err := GetService(functionNamespace, functionName, lister)
 	if err != nil {
