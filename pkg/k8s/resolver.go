@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"github.com/openfaas/faas-provider/proxy"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	coreLister "k8s.io/client-go/listers/core/v1"
 	"net/url"
@@ -21,6 +22,12 @@ type FunctionResolver struct {
 
 	rwMu      sync.RWMutex // for EndpointNSLister
 	cacheRWMu sync.RWMutex // for LoadBalancers
+}
+
+func NewFunctionResolver(defaultNamespace string,
+	lister v1.DeploymentLister, endpointsLister coreLister.EndpointsLister) proxy.BaseURLResolver {
+	r := FunctionResolver{DefaultNamespace: defaultNamespace, DeploymentLister: lister, EndpointsLister: endpointsLister}
+	return &r
 }
 
 func (r *FunctionResolver) Resolve(name string) (url.URL, error) {

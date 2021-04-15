@@ -213,14 +213,15 @@ func runController(setup serverSetup) {
 	operator := false
 	listers := startInformers(setup, stopCh, operator)
 
-	functionLookup := k8s.NewFunctionLookup(config.DefaultFunctionNamespace, listers.EndpointsInformer.Lister())
+	functionResolver := k8s.NewFunctionResolver(config.DefaultFunctionNamespace,
+		listers.DeploymentInformer.Lister(), listers.EndpointsInformer.Lister())
 
 	// TODO: set default qps in setup struct?
 	// wire BucketService
 	bucketService := handlers.NewFunctionBucketService(listers.DeploymentInformer.Lister())
 
 	bootstrapHandlers := providertypes.FaaSHandlers{
-		FunctionProxy:        handlers.MakeRateLimitedHandler(proxy.NewHandlerFunc(config.FaaSConfig, functionLookup), bucketService, config.DefaultFunctionNamespace),
+		FunctionProxy:        handlers.MakeRateLimitedHandler(proxy.NewHandlerFunc(config.FaaSConfig, functionResolver), bucketService, config.DefaultFunctionNamespace),
 		DeleteHandler:        handlers.MakeDeleteHandler(config.DefaultFunctionNamespace, kubeClient),
 		DeployHandler:        handlers.MakeDeployHandler(config.DefaultFunctionNamespace, factory),
 		FunctionReader:       handlers.MakeFunctionReader(config.DefaultFunctionNamespace, listers.DeploymentInformer.Lister()),
