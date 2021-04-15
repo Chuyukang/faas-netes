@@ -29,7 +29,7 @@ func (lb *RoundRobinLB) GetBackend() (string, error) {
 	defer lb.mu.Unlock()
 
 	upstreams, err := lb.fetcher.FetchUpstream()
-	if err!=nil {
+	if err != nil {
 		return "", err
 	}
 

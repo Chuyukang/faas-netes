@@ -14,8 +14,8 @@ type UpstreamFetcher interface {
 // ServiceFetcher get upstream by EndpointsNamespaceLister
 type ServiceFetcher struct {
 	nsEndpointLister v1.EndpointsNamespaceLister
-	functionName string
-	namespace string
+	functionName     string
+	namespace        string
 }
 
 func NewServiceFetcher(namespace string, functionName string, lister v1.EndpointsNamespaceLister) UpstreamFetcher {
@@ -41,7 +41,7 @@ func (f *ServiceFetcher) FetchUpstream() ([]string, error) {
 
 	//upstreams := make([]string, 0) // len=0, capacity=?
 	upstreams := make([]string, 0, all) // len=0, capacity=all
-	for _,s := range svc.Subsets[0].Addresses {
+	for _, s := range svc.Subsets[0].Addresses {
 		upstreams = append(upstreams, s.IP)
 	}
 
