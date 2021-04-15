@@ -51,20 +51,14 @@ func (r *FunctionResolver) Resolve(name string) (url.URL, error) {
 		var lister coreLister.EndpointsNamespaceLister
 		lister = r.GetEndpointNSLister(namespace)
 		if lister == nil {
-			lister = r.EndpointsLister.Endpoints(namespace)
-			r.SetEndpointNSLister(namespace, lister)
+			r.SetEndpointNSLister(namespace, r.EndpointsLister.Endpoints(namespace))
+			lister = r.GetEndpointNSLister(namespace) // Get Read Lock
 		}
-		fetcher := NewServiceFetcher(namespace, functionName, lister)
 
-		switch policy {
-		case "RoundRobin":
-			lb = NewRoundRobinLB(fetcher)
-		case "Random":
-			lb = NewRandomLB(fetcher)
-		default:
-			lb = NewRoundRobinLB(fetcher)
-		}
-		r.SetLoadBalancer(namespace, functionName, lb)
+		// wire LoadBalancer
+		fetcher := NewServiceFetcher(namespace, functionName, lister)
+		r.SetLoadBalancer(namespace, functionName, NewLoadBalancer(policy, fetcher))
+		lb = r.GetLoadBalancer(namespace, functionName) // Get Read Lock
 	}
 
 	// select a backend using load balance algorithm
