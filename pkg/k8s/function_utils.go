@@ -39,7 +39,7 @@ func GetService(functionNamespace string, functionName string, lister v1.Deploym
 func GetLoadBalancePolicy(functionNamespace string, functionName string, lister v1.DeploymentLister) string {
 	fallback := "RoundRobin"
 	functionStatus, err := GetService(functionNamespace, functionName, lister)
-	if err == nil {
+	if err != nil {
 		log.Printf("Could not get load balance policy. Use default RoundRobin. Internal error")
 		return fallback
 	}
