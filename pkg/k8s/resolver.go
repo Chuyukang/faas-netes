@@ -26,7 +26,13 @@ type FunctionResolver struct {
 
 func NewFunctionResolver(defaultNamespace string,
 	lister v1.DeploymentLister, endpointsLister coreLister.EndpointsLister) proxy.BaseURLResolver {
-	r := FunctionResolver{DefaultNamespace: defaultNamespace, DeploymentLister: lister, EndpointsLister: endpointsLister}
+	r := FunctionResolver{
+		DefaultNamespace: defaultNamespace,
+		DeploymentLister: lister,
+		EndpointsLister:  endpointsLister,
+		EndpointNSLister: map[string]coreLister.EndpointsNamespaceLister{},
+		LoadBalancers:    map[string]LoadBalancer{},
+	}
 	return &r
 }
 
