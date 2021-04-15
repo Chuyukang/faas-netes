@@ -10,6 +10,20 @@ type LoadBalancer interface {
 	GetBackend() (string, error)
 }
 
+func NewLoadBalancer(policy string, fetcher UpstreamFetcher) LoadBalancer {
+	var lb LoadBalancer
+	switch policy {
+	case "RoundRobin":
+		lb = NewRoundRobinLB(fetcher)
+	case "Random":
+		lb = NewRandomLB(fetcher)
+	default:
+		// fallback to RoundRobin
+		lb = NewRoundRobinLB(fetcher)
+	}
+	return lb
+}
+
 // NewRoundRobinLB construct a RoundRobinLB object
 func NewRoundRobinLB(fetcher UpstreamFetcher) LoadBalancer {
 	lb := RoundRobinLB{lastTarget: -1, fetcher: fetcher}
