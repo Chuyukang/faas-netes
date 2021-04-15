@@ -5,8 +5,10 @@ import (
 	"github.com/openfaas/faas-provider/proxy"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	coreLister "k8s.io/client-go/listers/core/v1"
+	"log"
 	"net/url"
 	"sync"
+	"time"
 )
 
 // FunctionResolver a resolver enhanced by load balance policy
@@ -45,7 +47,10 @@ func (r *FunctionResolver) Resolve(name string) (url.URL, error) {
 	// cache load balancer
 	lb = r.GetLoadBalancer(namespace, functionName)
 	if lb == nil {
+		start := time.Now()
 		policy := GetLoadBalancePolicy(functionName, namespace, r.DeploymentLister)
+		past := time.Since(start)
+		log.Printf("Function %s load balance policy: %s. Use time: %s\n", functionName, policy, past)
 
 		// cache EndpointsNamespaceLister
 		var lister coreLister.EndpointsNamespaceLister
