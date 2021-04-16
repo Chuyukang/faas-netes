@@ -48,7 +48,7 @@ func (r *FunctionResolver) Resolve(name string) (url.URL, error) {
 	lb = r.GetLoadBalancer(namespace, functionName)
 	if lb == nil {
 		start := time.Now()
-		policy := GetLoadBalancePolicy(functionName, namespace, r.DeploymentLister)
+		policy := GetLoadBalancePolicy(namespace, functionName, r.DeploymentLister)
 		past := time.Since(start)
 		log.Printf("Function %s load balance policy: %s. Use time: %s\n", functionName, policy, past)
 
