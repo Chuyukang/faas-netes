@@ -87,10 +87,11 @@ func (s *FunctionBucketServiceImpl) GetBucket(functionName string, namespace str
 }
 
 func computeFunctionBucket(functionName string, namespace string, lister v1.DeploymentLister) (*rate.Limiter, error) {
-	// TODO: add config for default value?
-	defaultQPSRate := 20.0
+	// no rate limit for default config
+	defaultQPSRate := rate.Inf
+	// if rate is Inf, burst (or bucket capacity) is ignored
 	defaultBurst := 20
-	fallback := rate.NewLimiter(rate.Limit(defaultQPSRate), defaultBurst)
+	fallback := rate.NewLimiter(defaultQPSRate, defaultBurst)
 
 	start := time.Now()
 

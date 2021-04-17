@@ -216,7 +216,6 @@ func runController(setup serverSetup) {
 	functionResolver := k8s.NewFunctionResolver(config.DefaultFunctionNamespace,
 		listers.DeploymentInformer.Lister(), listers.EndpointsInformer.Lister())
 
-	// TODO: set default qps in setup struct?
 	// wire BucketService
 	bucketService := handlers.NewFunctionBucketService(listers.DeploymentInformer.Lister())
 
