@@ -128,7 +128,11 @@ func (lb *WeightedRRLB) GetBackend() (string, error) {
 
 OUT:
 	// write back object value
-	lb.round = r
-	lb.curQueue = cur
+	if cur == n-1 { // if we have iterated all queue
+		lb.curQueue = 0
+		lb.round = (r + 1) % maxWeight
+	} else { // when we have not
+		lb.curQueue = cur + 1
+	}
 	return upstreams[target], nil
 }
