@@ -17,6 +17,8 @@ func NewLoadBalancer(policy string, fetcher UpstreamFetcher) LoadBalancer {
 		lb = NewRoundRobinLB(fetcher)
 	case "Random":
 		lb = NewRandomLB(fetcher)
+	case "WeightedRR":
+		lb = NewWeightedRRLB(fetcher)
 	default:
 		// fallback to RoundRobin
 		lb = NewRoundRobinLB(fetcher)
@@ -74,5 +76,59 @@ func (lb *RandomLB) GetBackend() (string, error) {
 
 	target := rand.Intn(n)
 
+	return upstreams[target], nil
+}
+
+func NewWeightedRRLB(fetcher UpstreamFetcher) LoadBalancer {
+	// TODO: use dynamic weight
+	lb := WeightedRRLB{fetcher: fetcher, endpointWeight: []int{1, 1, 3}, round: 0, curQueue: 0}
+	return &lb
+}
+
+type WeightedRRLB struct {
+	endpointWeight []int
+	round          int
+	curQueue       int
+
+	fetcher UpstreamFetcher
+	mu      sync.Mutex
+}
+
+func (lb *WeightedRRLB) GetBackend() (string, error) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+
+	upstreams, err := lb.fetcher.FetchUpstream()
+	if err != nil {
+		return "", err
+	}
+
+	// TODO: update endpointWeight, set appropriate default weight
+
+	n := len(upstreams)
+	maxWeight := 0
+	for _, weight := range lb.endpointWeight {
+		if weight > maxWeight {
+			maxWeight = weight
+		}
+	}
+
+	target := 0
+	var r, cur int
+	// iterate all rounds
+	for r = lb.round; ; r = (r + 1) % maxWeight {
+		// iterate all queue, compare weight with round number
+		for cur = lb.curQueue; cur < n; cur++ {
+			if lb.endpointWeight[cur] > r {
+				target = cur
+				goto OUT
+			}
+		}
+	}
+
+OUT:
+	// write back object value
+	lb.round = r
+	lb.curQueue = cur
 	return upstreams[target], nil
 }

@@ -57,6 +57,10 @@ func GetLoadBalancePolicy(functionNamespace string, functionName string, lister 
 	return policy
 }
 
+func GetFunctionBackends(functionName string, namespace string) {
+
+}
+
 // GetFuncName parse <function_name>.<namespace>
 // if no namespace return defaultNamespace
 func GetFuncName(name string, defaultNamespace string) (string, string) {
