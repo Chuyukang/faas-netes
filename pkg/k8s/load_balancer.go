@@ -1,6 +1,9 @@
 package k8s
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/client-go/listers/core/v1"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
 	"math/rand"
 	"sync"
 )
@@ -10,7 +13,15 @@ type LoadBalancer interface {
 	GetBackend() (string, error)
 }
 
-func NewLoadBalancer(policy string, fetcher UpstreamFetcher) LoadBalancer {
+type FunctionLBInfo struct {
+	functionName string
+	namespace    string
+
+	podLister     v1.PodLister
+	metricsGetter metricsClient.PodMetricsesGetter
+}
+
+func NewLoadBalancer(policy string, fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 	var lb LoadBalancer
 	switch policy {
 	case "RoundRobin":
@@ -19,6 +30,8 @@ func NewLoadBalancer(policy string, fetcher UpstreamFetcher) LoadBalancer {
 		lb = NewRandomLB(fetcher)
 	case "WeightedRR":
 		lb = NewWeightedRRLB(fetcher)
+	case "LeastCPU":
+		lb = NewLeastCPULB(fetcher, info)
 	default:
 		// fallback to RoundRobin
 		lb = NewRoundRobinLB(fetcher)
@@ -133,6 +146,41 @@ OUT:
 		lb.round = (r + 1) % maxWeight
 	} else { // when we have not
 		lb.curQueue = cur + 1
+	}
+	return upstreams[target], nil
+}
+
+func NewLeastCPULB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
+	lb := LeastCPULB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
+		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
+	go func() {
+		updatePodMetricsIndex(&lb.index, info)
+	}()
+	return &lb
+}
+
+type LeastCPULB struct {
+	namespace    string
+	functionName string
+	index        PodMetricsIndex
+
+	fetcher UpstreamFetcher
+}
+
+func (lb *LeastCPULB) GetBackend() (string, error) {
+	upstreams, err := lb.fetcher.FetchUpstream()
+	if err != nil {
+		return "", err
+	}
+
+	target := 0
+	minCPU := resource.Quantity{}
+	for i, backend := range upstreams {
+		curCPU := *lb.index.index[backend].PodCPU
+		if curCPU.Cmp(minCPU) < 0 {
+			target = i
+			minCPU = curCPU
+		}
 	}
 	return upstreams[target], nil
 }
