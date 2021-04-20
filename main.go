@@ -161,6 +161,7 @@ func main() {
 type customInformers struct {
 	EndpointsInformer  v1core.EndpointsInformer
 	DeploymentInformer v1apps.DeploymentInformer
+	PodInformer        v1core.PodInformer
 	FunctionsInformer  v1.FunctionInformer
 }
 
@@ -202,9 +203,16 @@ func startInformers(setup serverSetup, stopCh <-chan struct{}, operator bool) cu
 		log.Fatalf("failed to wait for cache to sync")
 	}
 
+	pods := kubeInformerFactory.Core().V1().Pods()
+	go pods.Informer().Run(stopCh)
+	if ok := cache.WaitForNamedCacheSync("faas-netes:pods", stopCh, pods.Informer().HasSynced); !ok {
+		log.Fatalf("failed to wait for cache to sync")
+	}
+
 	return customInformers{
 		EndpointsInformer:  endpoints,
 		DeploymentInformer: deployments,
+		PodInformer:        pods,
 		FunctionsInformer:  functions,
 	}
 }
@@ -221,8 +229,8 @@ func runController(setup serverSetup) {
 	listers := startInformers(setup, stopCh, operator)
 
 	functionResolver := k8s.NewFunctionResolver(config.DefaultFunctionNamespace,
-		listers.DeploymentInformer.Lister(), listers.EndpointsInformer.Lister(),
-		setup.metricsClient.MetricsV1beta1())
+		listers.DeploymentInformer.Lister(), listers.PodInformer.Lister(),
+		listers.EndpointsInformer.Lister(), setup.metricsClient.MetricsV1beta1())
 
 	// wire BucketService
 	bucketService := handlers.NewFunctionBucketService(listers.DeploymentInformer.Lister())

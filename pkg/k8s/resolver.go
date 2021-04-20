@@ -19,6 +19,7 @@ type FunctionResolver struct {
 	DefaultNamespace string
 	DeploymentLister v1.DeploymentLister
 	EndpointsLister  coreLister.EndpointsLister
+	PodLister        coreLister.PodLister
 	MetricsGetter    metricsClient.PodMetricsesGetter
 
 	EndpointNSLister map[string]coreLister.EndpointsNamespaceLister
@@ -28,8 +29,11 @@ type FunctionResolver struct {
 	cacheRWMu sync.RWMutex // for LoadBalancers
 }
 
-func NewFunctionResolver(defaultNamespace string,
-	lister v1.DeploymentLister, endpointsLister coreLister.EndpointsLister,
+func NewFunctionResolver(
+	defaultNamespace string,
+	lister v1.DeploymentLister,
+	podLister coreLister.PodLister,
+	endpointsLister coreLister.EndpointsLister,
 	metricsPodMetricsGetter metricsClient.PodMetricsesGetter) proxy.BaseURLResolver {
 	r := FunctionResolver{
 		DefaultNamespace: defaultNamespace,
@@ -37,6 +41,7 @@ func NewFunctionResolver(defaultNamespace string,
 		EndpointsLister:  endpointsLister,
 		MetricsGetter:    metricsPodMetricsGetter,
 		EndpointNSLister: map[string]coreLister.EndpointsNamespaceLister{},
+		PodLister:        podLister,
 		LoadBalancers:    map[string]LoadBalancer{},
 	}
 	return &r
@@ -66,7 +71,10 @@ func (r *FunctionResolver) Resolve(name string) (url.URL, error) {
 
 		// wire LoadBalancer
 		fetcher := NewServiceFetcher(namespace, functionName, lister)
-		r.SetLoadBalancer(namespace, functionName, NewLoadBalancer(policy, fetcher))
+		functionLBInfo := FunctionLBInfo{
+			functionName: functionName, namespace: namespace, podLister: r.PodLister, metricsGetter: r.MetricsGetter,
+		}
+		r.SetLoadBalancer(namespace, functionName, NewLoadBalancer(policy, fetcher, functionLBInfo))
 		lb = r.GetLoadBalancer(namespace, functionName) // Get Read Lock
 	}
 
