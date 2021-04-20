@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/client-go/listers/core/v1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
@@ -191,6 +192,8 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 			target = i
 			minCPU = *curCPU
 		}
+		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
+			backend, podSimpleMetrics.PodCPU.String(), podSimpleMetrics.PodMem.String())
 	}
 	return upstreams[target], nil
 }
