@@ -19,7 +19,7 @@ type PodSimpleMetrics struct {
 
 type PodMetricsIndex struct {
 	index map[string]*PodSimpleMetrics
-	mu    sync.Mutex
+	mu    sync.RWMutex
 }
 
 func getPodLabelSelector(functionName string) labels.Selector {

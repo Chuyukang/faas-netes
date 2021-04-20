@@ -6,6 +6,7 @@ import (
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 // LoadBalancer a LoadBalancer support multi policy
@@ -155,6 +156,8 @@ func NewLeastCPULB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
 	go func() {
 		updatePodMetricsIndex(&lb.index, info)
+
+		time.Sleep(15 * time.Second)
 	}()
 	return &lb
 }
@@ -173,13 +176,20 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 		return "", err
 	}
 
+	lb.index.mu.RLock()
+	defer lb.index.mu.RUnlock()
+
 	target := 0
 	minCPU := resource.Quantity{}
 	for i, backend := range upstreams {
-		curCPU := *lb.index.index[backend].PodCPU
+		podSimpleMetrics, exists := lb.index.index[backend]
+		if !exists {
+			podSimpleMetrics = &PodSimpleMetrics{}
+		}
+		curCPU := podSimpleMetrics.PodCPU
 		if curCPU.Cmp(minCPU) < 0 {
 			target = i
-			minCPU = curCPU
+			minCPU = *curCPU
 		}
 	}
 	return upstreams[target], nil
