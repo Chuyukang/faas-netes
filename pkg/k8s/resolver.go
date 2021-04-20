@@ -5,6 +5,7 @@ import (
 	"github.com/openfaas/faas-provider/proxy"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	coreLister "k8s.io/client-go/listers/core/v1"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
 	"log"
 	"net/url"
 	"sync"
@@ -18,6 +19,7 @@ type FunctionResolver struct {
 	DefaultNamespace string
 	DeploymentLister v1.DeploymentLister
 	EndpointsLister  coreLister.EndpointsLister
+	MetricsGetter    metricsClient.PodMetricsesGetter
 
 	EndpointNSLister map[string]coreLister.EndpointsNamespaceLister
 	LoadBalancers    map[string]LoadBalancer
@@ -27,11 +29,13 @@ type FunctionResolver struct {
 }
 
 func NewFunctionResolver(defaultNamespace string,
-	lister v1.DeploymentLister, endpointsLister coreLister.EndpointsLister) proxy.BaseURLResolver {
+	lister v1.DeploymentLister, endpointsLister coreLister.EndpointsLister,
+	metricsPodMetricsGetter metricsClient.PodMetricsesGetter) proxy.BaseURLResolver {
 	r := FunctionResolver{
 		DefaultNamespace: defaultNamespace,
 		DeploymentLister: lister,
 		EndpointsLister:  endpointsLister,
+		MetricsGetter:    metricsPodMetricsGetter,
 		EndpointNSLister: map[string]coreLister.EndpointsNamespaceLister{},
 		LoadBalancers:    map[string]LoadBalancer{},
 	}
