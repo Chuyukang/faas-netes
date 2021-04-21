@@ -186,10 +186,12 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 
 	target := 0
 	firstElem, ok := lb.index.index[upstreams[0]]
-	minCPU := firstElem.PodCPU
 	if !ok {
-		minCPU = resource.NewScaledQuantity(0,0)
+		firstElem = &PodSimpleMetrics{
+			PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+		}
 	}
+	minCPU := firstElem.PodCPU
 	for i, backend := range upstreams {
 		podSimpleMetrics, exists := lb.index.index[backend]
 		if !exists {
