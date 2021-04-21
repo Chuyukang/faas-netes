@@ -180,17 +180,27 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 	lb.index.mu.RLock()
 	defer lb.index.mu.RUnlock()
 
+	if len(upstreams) < 1 {
+		return "", fmt.Errorf("no avaliable endpoint for function")
+	}
+
 	target := 0
-	minCPU := resource.Quantity{}
+	firstElem, ok := lb.index.index[upstreams[0]]
+	minCPU := firstElem.PodCPU
+	if !ok {
+		minCPU = resource.NewScaledQuantity(0,0)
+	}
 	for i, backend := range upstreams {
 		podSimpleMetrics, exists := lb.index.index[backend]
 		if !exists {
-			podSimpleMetrics = &PodSimpleMetrics{}
+			podSimpleMetrics = &PodSimpleMetrics{
+				PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+			}
 		}
 		curCPU := podSimpleMetrics.PodCPU
-		if curCPU.Cmp(minCPU) < 0 {
+		if curCPU.Cmp(*minCPU) < 0 {
 			target = i
-			minCPU = *curCPU
+			minCPU = curCPU
 		}
 		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
 			backend, podSimpleMetrics.PodCPU.String(), podSimpleMetrics.PodMem.String())
