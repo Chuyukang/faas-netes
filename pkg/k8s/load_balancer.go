@@ -201,6 +201,7 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 		if curCPU.Cmp(*minCPU) < 0 {
 			target = i
 			minCPU = curCPU
+			fmt.Printf("use %d as temp target\n", target)
 		}
 		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
 			backend, podSimpleMetrics.PodCPU.String(), podSimpleMetrics.PodMem.String())
