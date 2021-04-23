@@ -44,6 +44,6 @@ jobs:
           context: .
           pull: true
           push: true
-          cache-from: type=registry,ref=user/app:latest
+          cache-from: type=registry,ref=chuyukang/faas-netes:latest
           cache-to: type=inline
           tags: ${{ steps.prep.outputs.tags }}
