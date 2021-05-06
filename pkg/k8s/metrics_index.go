@@ -76,6 +76,7 @@ func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 		podName := item.Name
 		podMetrics := getPodSimpleMetric(item)
 		name2Metrics[podName] = podMetrics
+		fmt.Printf("PodName: %s, PodCPU: %s, PodMemory: %s\n", podName, podMetrics.PodCPU.String(), podMetrics.PodMem.String())
 	}
 	for ip, name := range ip2Name {
 		podMetrics, exists := name2Metrics[name]
