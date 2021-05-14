@@ -34,6 +34,8 @@ func NewLoadBalancer(policy string, fetcher UpstreamFetcher, info FunctionLBInfo
 		lb = NewWeightedRRLB(fetcher)
 	case "LeastCPU":
 		lb = NewLeastCPULB(fetcher, info)
+	case "LeastMem":
+		lb = NewLeastMemLB(fetcher, info)
 	default:
 		// fallback to RoundRobin
 		lb = NewRoundRobinLB(fetcher)
@@ -203,6 +205,65 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 		if curCPU.Cmp(*minCPU) < 0 {
 			target = i
 			minCPU = curCPU
+			fmt.Printf("use %d as temp target\n", target)
+		}
+		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
+			backend, podSimpleMetrics.PodCPU.String(), podSimpleMetrics.PodMem.String())
+	}
+	return upstreams[target], nil
+}
+
+func NewLeastMemLB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
+	lb := LeastMemLB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
+		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
+	go func() {
+		updatePodMetricsIndex(&lb.index, info)
+
+		time.Sleep(15 * time.Second)
+	}()
+	return &lb
+}
+
+type LeastMemLB struct {
+	namespace    string
+	functionName string
+	index        PodMetricsIndex
+
+	fetcher UpstreamFetcher
+}
+
+func (lb *LeastMemLB) GetBackend() (string, error) {
+	upstreams, err := lb.fetcher.FetchUpstream()
+	if err != nil {
+		return "", err
+	}
+
+	lb.index.mu.RLock()
+	defer lb.index.mu.RUnlock()
+
+	if len(upstreams) < 1 {
+		return "", fmt.Errorf("no avaliable endpoint for function")
+	}
+
+	target := 0
+	firstElem, ok := lb.index.index[upstreams[0]]
+	if !ok {
+		firstElem = &PodSimpleMetrics{
+			PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+		}
+	}
+	minMem := firstElem.PodMem
+	for i, backend := range upstreams {
+		podSimpleMetrics, exists := lb.index.index[backend]
+		if !exists {
+			podSimpleMetrics = &PodSimpleMetrics{
+				PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+			}
+		}
+		curMem := podSimpleMetrics.PodMem
+		if curMem.Cmp(*minMem) < 0 {
+			target = i
+			minMem = curMem
 			fmt.Printf("use %d as temp target\n", target)
 		}
 		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
