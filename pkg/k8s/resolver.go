@@ -5,6 +5,7 @@ import (
 	"github.com/openfaas/faas-provider/proxy"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	coreLister "k8s.io/client-go/listers/core/v1"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
 	"log"
 	"net/url"
 	"sync"
@@ -18,6 +19,8 @@ type FunctionResolver struct {
 	DefaultNamespace string
 	DeploymentLister v1.DeploymentLister
 	EndpointsLister  coreLister.EndpointsLister
+	PodLister        coreLister.PodLister
+	MetricsGetter    metricsClient.PodMetricsesGetter
 
 	EndpointNSLister map[string]coreLister.EndpointsNamespaceLister
 	LoadBalancers    map[string]LoadBalancer
@@ -26,13 +29,19 @@ type FunctionResolver struct {
 	cacheRWMu sync.RWMutex // for LoadBalancers
 }
 
-func NewFunctionResolver(defaultNamespace string,
-	lister v1.DeploymentLister, endpointsLister coreLister.EndpointsLister) proxy.BaseURLResolver {
+func NewFunctionResolver(
+	defaultNamespace string,
+	lister v1.DeploymentLister,
+	podLister coreLister.PodLister,
+	endpointsLister coreLister.EndpointsLister,
+	metricsPodMetricsGetter metricsClient.PodMetricsesGetter) proxy.BaseURLResolver {
 	r := FunctionResolver{
 		DefaultNamespace: defaultNamespace,
 		DeploymentLister: lister,
 		EndpointsLister:  endpointsLister,
+		MetricsGetter:    metricsPodMetricsGetter,
 		EndpointNSLister: map[string]coreLister.EndpointsNamespaceLister{},
+		PodLister:        podLister,
 		LoadBalancers:    map[string]LoadBalancer{},
 	}
 	return &r
@@ -62,7 +71,10 @@ func (r *FunctionResolver) Resolve(name string) (url.URL, error) {
 
 		// wire LoadBalancer
 		fetcher := NewServiceFetcher(namespace, functionName, lister)
-		r.SetLoadBalancer(namespace, functionName, NewLoadBalancer(policy, fetcher))
+		functionLBInfo := FunctionLBInfo{
+			functionName: functionName, namespace: namespace, podLister: r.PodLister, metricsGetter: r.MetricsGetter,
+		}
+		r.SetLoadBalancer(namespace, functionName, NewLoadBalancer(policy, fetcher, functionLBInfo))
 		lb = r.GetLoadBalancer(namespace, functionName) // Get Read Lock
 	}
 

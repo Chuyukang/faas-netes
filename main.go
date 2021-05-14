@@ -23,6 +23,7 @@ import (
 	"github.com/openfaas/faas-provider/logs"
 	"github.com/openfaas/faas-provider/proxy"
 	providertypes "github.com/openfaas/faas-provider/types"
+	metricsCS "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	kubeinformers "k8s.io/client-go/informers"
 	v1apps "k8s.io/client-go/informers/apps/v1"
@@ -80,6 +81,11 @@ func main() {
 	faasClient, err := clientset.NewForConfig(clientCmdConfig)
 	if err != nil {
 		log.Fatalf("Error building OpenFaaS clientset: %s", err.Error())
+	}
+
+	metricsClientSet, err := metricsCS.NewForConfig(clientCmdConfig)
+	if err != nil {
+		log.Fatalf("Error building metrics clientset: %s", err.Error())
 	}
 
 	readConfig := config.ReadConfig{}
@@ -140,6 +146,7 @@ func main() {
 		profileInformerFactory: profileInformerFactory,
 		kubeClient:             kubeClient,
 		faasClient:             faasClient,
+		metricsClient:          metricsClientSet,
 	}
 
 	if operator {
@@ -154,6 +161,7 @@ func main() {
 type customInformers struct {
 	EndpointsInformer  v1core.EndpointsInformer
 	DeploymentInformer v1apps.DeploymentInformer
+	PodInformer        v1core.PodInformer
 	FunctionsInformer  v1.FunctionInformer
 }
 
@@ -195,9 +203,16 @@ func startInformers(setup serverSetup, stopCh <-chan struct{}, operator bool) cu
 		log.Fatalf("failed to wait for cache to sync")
 	}
 
+	pods := kubeInformerFactory.Core().V1().Pods()
+	go pods.Informer().Run(stopCh)
+	if ok := cache.WaitForNamedCacheSync("faas-netes:pods", stopCh, pods.Informer().HasSynced); !ok {
+		log.Fatalf("failed to wait for cache to sync")
+	}
+
 	return customInformers{
 		EndpointsInformer:  endpoints,
 		DeploymentInformer: deployments,
+		PodInformer:        pods,
 		FunctionsInformer:  functions,
 	}
 }
@@ -214,7 +229,8 @@ func runController(setup serverSetup) {
 	listers := startInformers(setup, stopCh, operator)
 
 	functionResolver := k8s.NewFunctionResolver(config.DefaultFunctionNamespace,
-		listers.DeploymentInformer.Lister(), listers.EndpointsInformer.Lister())
+		listers.DeploymentInformer.Lister(), listers.PodInformer.Lister(),
+		listers.EndpointsInformer.Lister(), setup.metricsClient.MetricsV1beta1())
 
 	// wire BucketService
 	bucketService := handlers.NewFunctionBucketService(listers.DeploymentInformer.Lister())
@@ -279,6 +295,7 @@ type serverSetup struct {
 	config                 config.BootstrapConfig
 	kubeClient             *kubernetes.Clientset
 	faasClient             *clientset.Clientset
+	metricsClient          *metricsCS.Clientset
 	functionFactory        k8s.FunctionFactory
 	kubeInformerFactory    kubeinformers.SharedInformerFactory
 	faasInformerFactory    informers.SharedInformerFactory
