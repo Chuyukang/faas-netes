@@ -158,9 +158,11 @@ func NewLeastCPULB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 	lb := LeastCPULB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
 		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
 	go func() {
-		updatePodMetricsIndex(&lb.index, info)
+		for ;; {
+			updatePodMetricsIndex(&lb.index, info)
 
-		time.Sleep(15 * time.Second)
+			time.Sleep(15 * time.Second)
+		}
 	}()
 	return &lb
 }
@@ -217,9 +219,11 @@ func NewLeastMemLB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 	lb := LeastMemLB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
 		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
 	go func() {
-		updatePodMetricsIndex(&lb.index, info)
+		for ;; {
+			updatePodMetricsIndex(&lb.index, info)
 
-		time.Sleep(15 * time.Second)
+			time.Sleep(15 * time.Second)
+		}
 	}()
 	return &lb
 }
