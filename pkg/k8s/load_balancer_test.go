@@ -3,7 +3,9 @@ package k8s
 import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestRoundRobinLB_GetBackend(t *testing.T) {
@@ -46,19 +48,39 @@ func TestLeastCPULB_GetBackend(t *testing.T) {
 	fetcher := NewFakeUpstreamFetcher(upstreams)
 
 	lb := &LeastCPULB{fetcher: fetcher, functionName: "",namespace: "",
-		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{
-		"10.0.0.1":{resource.NewScaledQuantity(488961,-9),resource.NewScaledQuantity(8236, 3)},
-		"10.0.0.2":{resource.NewScaledQuantity(480011,-9),resource.NewScaledQuantity(8236, 3)},
-		"10.0.0.3":{resource.NewScaledQuantity(525077,-9),resource.NewScaledQuantity(8236, 3)},
-	}},
+		index: PodMetricsIndex{
+		index: map[string]*PodSimpleMetrics{
+		"10.0.0.1":{resource.NewScaledQuantity(0,0),nil},
+		"10.0.0.2":{resource.NewScaledQuantity(1,0),nil},
+		"10.0.0.3":{resource.NewScaledQuantity(2,0),nil},
+		},
+		},
 }
+	go func(index *PodMetricsIndex) {
+		lastSelect := 0
+		for ; ; {
+			index.mu.Lock()
+			for i:=0;i<3;i++ {
+				index.index["10.0.0."+strconv.Itoa(i+1)].PodCPU = resource.NewScaledQuantity(10,0)
+			}
 
-	backend,err := lb.GetBackend()
-	if err!=nil {
-		t.Fail()
-	}
-	if backend != "10.0.0.2" {
-		t.Fail()
+			aim := "10.0.0."+strconv.Itoa(lastSelect+1)
+			index.index[aim].PodCPU=resource.NewScaledQuantity(0,0)
+			index.mu.Unlock()
+			lastSelect = (lastSelect+1)%3
+
+			time.Sleep(10 * time.Second)
+		}
+	}(&lb.index)
+
+	for ;; {
+		backend,err := lb.GetBackend()
+		if err!=nil {
+			t.Fail()
+		}
+
+		fmt.Println(backend)
+		time.Sleep(time.Second*10)
 	}
 }
 
