@@ -5,6 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/client-go/listers/core/v1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -196,6 +197,7 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 		}
 	}
 	minCPU := firstElem.PodCPU
+	log.Printf("--------\n")
 	for i, backend := range upstreams {
 		podSimpleMetrics, exists := lb.index.index[backend]
 		if !exists {
@@ -207,11 +209,12 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 		if curCPU.Cmp(*minCPU) < 0 {
 			target = i
 			minCPU = curCPU
-			fmt.Printf("use %d as temp target\n", target)
 		}
-		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
+		log.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
 			backend, podSimpleMetrics.PodCPU.String(), podSimpleMetrics.PodMem.String())
 	}
+	log.Printf("target: %s\n", upstreams[target])
+	log.Printf("--------\n")
 	return upstreams[target], nil
 }
 

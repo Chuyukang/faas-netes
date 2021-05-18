@@ -2,14 +2,15 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 	v13 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	metricsApi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	"log"
 	"sync"
+	"time"
 )
 
 type PodSimpleMetrics struct {
@@ -46,6 +47,7 @@ func getPodSimpleMetric(podMetric metricsApi.PodMetrics) *PodSimpleMetrics {
 }
 //selector labels.Selector, lister v1.PodLister, metricsGetter metricsClient.PodMetricsInterface
 func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
+	start := time.Now()
 	index.mu.Lock()
 	defer index.mu.Unlock()
 
@@ -55,12 +57,12 @@ func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 
 	podList, err := lister.List(selector)
 	if err != nil {
-		fmt.Printf("List Pods Error! When updating index!\n")
+		log.Printf("List Pods Error! When updating index!\n")
 		return
 	}
 	podMetricsList, err := metricsLister.List(context.TODO(), v12.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
-		fmt.Printf("List PodMetrics Error! When updating index!\n")
+		log.Printf("List PodMetrics Error! When updating index!\n")
 		return
 	}
 
@@ -76,7 +78,6 @@ func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 		podName := item.Name
 		podMetrics := getPodSimpleMetric(item)
 		name2Metrics[podName] = podMetrics
-		fmt.Printf("PodName: %s, PodCPU: %s, PodMemory: %s\n", podName, podMetrics.PodCPU.String(), podMetrics.PodMem.String())
 	}
 	for ip, name := range ip2Name {
 		podMetrics, exists := name2Metrics[name]
@@ -86,4 +87,7 @@ func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 			index.index[ip] = &PodSimpleMetrics{}
 		}
 	}
+
+	elapsed := time.Since(start)
+	log.Printf("update start at %s, elapsed %s\n", start, elapsed)
 }
