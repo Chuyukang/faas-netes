@@ -37,6 +37,8 @@ func NewLoadBalancer(policy string, fetcher UpstreamFetcher, info FunctionLBInfo
 		lb = NewLeastCPULB(fetcher, info)
 	case "LeastMem":
 		lb = NewLeastMemLB(fetcher, info)
+	case "LessCPU":
+		lb = NewLessCPULB(fetcher, info)
 	default:
 		// fallback to RoundRobin
 		lb = NewRoundRobinLB(fetcher)
@@ -276,5 +278,56 @@ func (lb *LeastMemLB) GetBackend() (string, error) {
 		fmt.Printf("IP: %s, PodCPU: %s, PodMem: %s\n",
 			backend, podSimpleMetrics.PodCPU.String(), podSimpleMetrics.PodMem.String())
 	}
+	return upstreams[target], nil
+}
+
+func NewLessCPULB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
+	lb := LessCPULB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
+		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
+	go func() {
+		for ;; {
+			updatePodMetricsIndex(&lb.index, info)
+
+			time.Sleep(30 * time.Second)
+		}
+	}()
+	return &lb
+}
+
+type LessCPULB struct {
+	namespace    string
+	functionName string
+	index        PodMetricsIndex
+
+	fetcher UpstreamFetcher
+}
+
+func (lb *LessCPULB) GetBackend() (string, error) {
+	upstreams, err := lb.fetcher.FetchUpstream()
+	if err != nil {
+		return "", err
+	}
+
+	lb.index.mu.RLock()
+	defer lb.index.mu.RUnlock()
+
+	n := len(upstreams)
+	target1 := rand.Intn(n)
+	target2 := rand.Intn(n)
+
+	target1Metrics, exist := lb.index.index[upstreams[target1]]
+	if !exist {
+		target1Metrics = &PodSimpleMetrics{PodCPU: resource.NewScaledQuantity(0,0)}
+	}
+	target2Metrics, exist := lb.index.index[upstreams[target2]]
+	if !exist {
+		target2Metrics = &PodSimpleMetrics{PodCPU: resource.NewScaledQuantity(0,0)}
+	}
+
+	target := target2
+	if target1Metrics.PodCPU.Cmp(*target2Metrics.PodCPU) < 0 {
+		target = target1
+	}
+
 	return upstreams[target], nil
 }
