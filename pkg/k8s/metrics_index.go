@@ -47,9 +47,6 @@ func getPodSimpleMetric(podMetric metricsApi.PodMetrics) *PodSimpleMetrics {
 }
 //selector labels.Selector, lister v1.PodLister, metricsGetter metricsClient.PodMetricsInterface
 func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
-	start := time.Now()
-	index.mu.Lock()
-	defer index.mu.Unlock()
 
 	lister := info.podLister
 	metricsLister := info.metricsGetter.PodMetricses(info.namespace)
@@ -79,6 +76,11 @@ func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 		podMetrics := getPodSimpleMetric(item)
 		name2Metrics[podName] = podMetrics
 	}
+	
+	start := time.Now()
+	
+	index.mu.Lock()
+	defer index.mu.Unlock()
 	for ip, name := range ip2Name {
 		podMetrics, exists := name2Metrics[name]
 		if exists {
