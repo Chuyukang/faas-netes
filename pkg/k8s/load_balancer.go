@@ -161,7 +161,7 @@ func NewLeastCPULB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 	lb := LeastCPULB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
 		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
 	go func() {
-		for ;; {
+		for {
 			updatePodMetricsIndex(&lb.index, info)
 
 			time.Sleep(15 * time.Second)
@@ -195,7 +195,7 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 	firstElem, ok := lb.index.index[upstreams[0]]
 	if !ok {
 		firstElem = &PodSimpleMetrics{
-			PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+			PodCPU: resource.NewScaledQuantity(0, 0), PodMem: resource.NewScaledQuantity(0, 0),
 		}
 	}
 	minCPU := firstElem.PodCPU
@@ -204,7 +204,7 @@ func (lb *LeastCPULB) GetBackend() (string, error) {
 		podSimpleMetrics, exists := lb.index.index[backend]
 		if !exists {
 			podSimpleMetrics = &PodSimpleMetrics{
-				PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+				PodCPU: resource.NewScaledQuantity(0, 0), PodMem: resource.NewScaledQuantity(0, 0),
 			}
 		}
 		curCPU := podSimpleMetrics.PodCPU
@@ -224,7 +224,7 @@ func NewLeastMemLB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 	lb := LeastMemLB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
 		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
 	go func() {
-		for ;; {
+		for {
 			updatePodMetricsIndex(&lb.index, info)
 
 			time.Sleep(15 * time.Second)
@@ -258,7 +258,7 @@ func (lb *LeastMemLB) GetBackend() (string, error) {
 	firstElem, ok := lb.index.index[upstreams[0]]
 	if !ok {
 		firstElem = &PodSimpleMetrics{
-			PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+			PodCPU: resource.NewScaledQuantity(0, 0), PodMem: resource.NewScaledQuantity(0, 0),
 		}
 	}
 	minMem := firstElem.PodMem
@@ -266,7 +266,7 @@ func (lb *LeastMemLB) GetBackend() (string, error) {
 		podSimpleMetrics, exists := lb.index.index[backend]
 		if !exists {
 			podSimpleMetrics = &PodSimpleMetrics{
-				PodCPU: resource.NewScaledQuantity(0,0), PodMem: resource.NewScaledQuantity(0,0),
+				PodCPU: resource.NewScaledQuantity(0, 0), PodMem: resource.NewScaledQuantity(0, 0),
 			}
 		}
 		curMem := podSimpleMetrics.PodMem
@@ -285,7 +285,7 @@ func NewLessCPULB(fetcher UpstreamFetcher, info FunctionLBInfo) LoadBalancer {
 	lb := LessCPULB{functionName: info.functionName, namespace: info.namespace, fetcher: fetcher,
 		index: PodMetricsIndex{index: map[string]*PodSimpleMetrics{}}}
 	go func() {
-		for ;; {
+		for {
 			updatePodMetricsIndex(&lb.index, info)
 
 			time.Sleep(30 * time.Second)
@@ -317,11 +317,11 @@ func (lb *LessCPULB) GetBackend() (string, error) {
 
 	target1Metrics, exist := lb.index.index[upstreams[target1]]
 	if !exist {
-		target1Metrics = &PodSimpleMetrics{PodCPU: resource.NewScaledQuantity(0,0)}
+		target1Metrics = &PodSimpleMetrics{PodCPU: resource.NewScaledQuantity(0, 0)}
 	}
 	target2Metrics, exist := lb.index.index[upstreams[target2]]
 	if !exist {
-		target2Metrics = &PodSimpleMetrics{PodCPU: resource.NewScaledQuantity(0,0)}
+		target2Metrics = &PodSimpleMetrics{PodCPU: resource.NewScaledQuantity(0, 0)}
 	}
 
 	target := target2

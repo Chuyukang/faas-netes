@@ -35,7 +35,6 @@ func GetService(functionNamespace string, functionName string, lister v1.Deploym
 	return nil, fmt.Errorf("function: %s not found", functionName)
 }
 
-// TODO
 func GetLoadBalancePolicy(functionNamespace string, functionName string, lister v1.DeploymentLister) string {
 	fallback := "RoundRobin"
 	functionStatus, err := GetService(functionNamespace, functionName, lister)

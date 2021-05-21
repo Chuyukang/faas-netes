@@ -13,8 +13,7 @@ import (
 )
 
 // FunctionResolver a resolver enhanced by load balance policy
-// available policy: RoundRobin, Random
-// TODO: add hash policy support
+// available policy: RoundRobin, Random, LessCPU
 type FunctionResolver struct {
 	DefaultNamespace string
 	DeploymentLister v1.DeploymentLister

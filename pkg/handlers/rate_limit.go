@@ -48,10 +48,8 @@ func MakeRateLimitedHandler(next http.HandlerFunc, service BucketService, defaul
 	}
 }
 
-// TODO: add a clean up goroutine?
 type FunctionBucketServiceImpl struct {
-	cache map[string]*rate.Limiter
-	// TODO: use read write lock?
+	cache  map[string]*rate.Limiter
 	mu     sync.Mutex
 	lister v1.DeploymentLister
 }

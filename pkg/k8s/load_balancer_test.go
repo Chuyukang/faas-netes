@@ -61,7 +61,7 @@ func TestLeastCPULB_GetBackend(t *testing.T) {
 		t.Fail()
 	}
 
-	lb.index.index["10.0.0.2"].PodCPU=resource.NewScaledQuantity(0,0)
+	lb.index.index["10.0.0.2"].PodCPU = resource.NewScaledQuantity(0, 0)
 	backend2, err := lb.GetBackend()
 	if err != nil {
 		t.Fail()

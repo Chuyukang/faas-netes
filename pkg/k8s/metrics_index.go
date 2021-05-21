@@ -45,6 +45,7 @@ func getPodSimpleMetric(podMetric metricsApi.PodMetrics) *PodSimpleMetrics {
 	}
 	return &PodSimpleMetrics{PodCPU: podCPU, PodMem: podMemory}
 }
+
 //selector labels.Selector, lister v1.PodLister, metricsGetter metricsClient.PodMetricsInterface
 func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 
@@ -76,9 +77,9 @@ func updatePodMetricsIndex(index *PodMetricsIndex, info FunctionLBInfo) {
 		podMetrics := getPodSimpleMetric(item)
 		name2Metrics[podName] = podMetrics
 	}
-	
+
 	start := time.Now()
-	
+
 	index.mu.Lock()
 	defer index.mu.Unlock()
 	for ip, name := range ip2Name {
